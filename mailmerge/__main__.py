@@ -140,11 +140,6 @@ def main(*, sample, dry_run, limit, no_limit, resume,
             "To send messages, use the --no-dry-run option."
         )
 
-
-if __name__ == "__main__":
-    main()  # pylint: disable=missing-kwoa
-
-
 def check_input_files(template_path, database_path, config_path, sample):
     """Check if input files are present and hint the user."""
     if sample:
@@ -394,3 +389,7 @@ def is_attachment(part):
         part.get("Content-Disposition") != "inline" and
         part.get("Content-Disposition") is not None
     )
+
+
+if __name__ == "__main__":
+    main()  # pylint: disable=missing-kwoa
