@@ -7,11 +7,13 @@ Andrew DeOrio <awdeorio@umich.edu>
 import re
 from pathlib import Path
 from xml.etree import ElementTree
+from xml.etree.ElementTree import _serialize_html, _namespaces
 import email
 import email.mime
 import email.mime.application
 import email.mime.multipart
 import email.mime.text
+from io import StringIO
 import html5lib
 import markdown
 import jinja2
@@ -294,8 +296,17 @@ class TemplateMessage:
             # We only need to update the message if we cleared the header,
             # which only happens if we transformed an attachment reference.
             if 'Content-Transfer-Encoding' not in part:
-                new_html = ElementTree.tostring(document).decode('utf-8')
-                part.set_payload(new_html)
+                new_html = StringIO()
+                qnames, _ = _namespaces(document)
+                for q in qnames:
+                    # Plain HTML (not XHTML) doesn't know about namespaces.
+                    # namespace prefixes mess up rendering of things like SVG
+                    if q and q.startswith('{'):
+                        _,_,tag = qnames[q].partition(':')
+                        qnames[q] = tag
+
+                _serialize_html(new_html.write, document, qnames=qnames, namespaces={}, short_empty_elements=True)
+                part.set_payload(new_html.getvalue(), charset='utf-8')
 
     def _resolve_attachment_path(self, path):
         """Find attachment file or raise MailmergeError."""
