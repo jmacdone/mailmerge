@@ -4,6 +4,7 @@ Represent a templated email message.
 Andrew DeOrio <awdeorio@umich.edu>
 """
 
+import email.mime.image
 import re
 from pathlib import Path
 from xml.etree import ElementTree
@@ -224,13 +225,26 @@ class TemplateMessage:
             with path.open("rb") as attachment:
                 content = attachment.read()
             basename = path.parts[-1]
-            part = email.mime.application.MIMEApplication(
+
+            container =  email.mime.application.MIMEApplication
+            _subtype = None #ask the container to guess
+            disposition = f'attachment; filename="{basename}"'
+            if basename.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.webp', '.heif')):
+                container = email.mime.image.MIMEImage
+                disposition = f'inline; filename="{basename}"'
+            if basename.lower().endswith('.svg'):
+                container = email.mime.image.MIMEImage
+                _subtype = 'svg+xml'
+                disposition = f'inline; filename="{basename}"'
+
+            part = container(
                 content,
+                _subtype = _subtype,
                 Name=str(basename),
             )
             part.add_header(
                 'Content-Disposition',
-                f'attachment; filename="{basename}"'
+                disposition
             )
 
             # When processing inline images in the email body, we will

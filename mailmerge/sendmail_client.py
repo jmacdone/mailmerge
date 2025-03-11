@@ -150,6 +150,7 @@ class SendmailClient:
         message_flattened = str(message)
         with smtplib.SMTP(self.config.host, self.config.port) as smtp:
             smtp.sendmail(sender, recipients, message_flattened)
+            #smtp.sendmail(sender, recipients, message_flattened, mail_options=('UTF8SMTP'))
 
     def sendmail_xoauth(self, sender, recipients, message):
         """Send email message with XOAUTH security."""
