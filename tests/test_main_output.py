@@ -13,6 +13,7 @@ import textwrap
 from pathlib import Path
 import click.testing
 from mailmerge.__main__ import main
+from . import utils
 
 
 def test_stdout(tmpdir):
@@ -187,6 +188,89 @@ def test_stdout_utf8_redirect(tmpdir):
     with tmpdir.as_cwd():
         exit_code = os.system("mailmerge > mailmerge.out")
     assert exit_code == 0
+
+
+def test_stdout_json_database(tmpdir):
+    """Verify output when using a JSON database with nested structures.
+
+    Testing arrays and optionally-defined keys
+    """
+    # Template that references JSON fields
+    template_path = Path(tmpdir/"mailmerge_template.txt")
+    template_path.write_text(textwrap.dedent("""\
+        TO: to@test.com
+        FROM: from@test.com
+
+        Hello {{ name }}!
+        Orders placed: {{ orders|length }}
+        First item: {{ orders[0].item if orders|length > 0 else "none" }}
+        Notes: {{ notes if notes is defined else "none" }}
+
+    """), encoding="utf8")
+
+    # Copy complex JSON database
+    database_path = Path(tmpdir/"database.json")
+    database_path.write_text(
+        (utils.TESTDATA/"database_with_complex_datatypes.json").read_text(encoding="utf8"),
+        encoding="utf8",
+    )
+
+    # Simple unsecure server config
+    config_path = Path(tmpdir/"mailmerge_server.conf")
+    config_path.write_text(textwrap.dedent("""\
+        [smtp_server]
+        host = open-smtp.example.com
+        port = 25
+    """), encoding="utf8")
+
+    # Run mailmerge with JSON database and verify first two messages
+    runner = click.testing.CliRunner()
+    result = runner.invoke(main, [
+        "--template", template_path,
+        "--database", database_path,
+        "--config", config_path,
+        "--limit", "2",
+        "--dry-run",
+        "--output-format", "text",
+    ])
+    assert not result.exception
+    assert result.exit_code == 0
+    assert result.stderr == ""
+    assert "Date:" in result.stdout
+    stdout = copy.deepcopy(result.stdout)
+    stdout = re.sub(r"Date.*\n", "", stdout)
+    assert stdout == textwrap.dedent("""\
+        >>> message 1
+        TO: to@test.com
+        FROM: from@test.com
+        MIME-Version: 1.0
+        Content-Type: text/plain; charset="us-ascii"
+        Content-Transfer-Encoding: 7bit
+
+        Hello Phillip J Fry!
+        Orders placed: 2
+        First item: pizza
+        Notes: Wearing a red jacket
+
+
+        >>> message 1 sent
+        >>> message 2
+        TO: to@test.com
+        FROM: from@test.com
+        MIME-Version: 1.0
+        Content-Type: text/plain; charset="us-ascii"
+        Content-Transfer-Encoding: 7bit
+
+        Hello Turanga Leela!
+        Orders placed: 2
+        First item: slurm
+        Notes: none
+
+
+        >>> message 2 sent
+        >>> Limit was 2 messages.  To remove the limit, use the --no-limit option.
+        >>> This was a dry run.  To send messages, use the --no-dry-run option.
+    """)
 
 
 def test_english(tmpdir):
@@ -460,7 +544,9 @@ def test_complicated(tmpdir):
     Includes templating, TO, CC, BCC, UTF8 characters, emoji, attachments,
     encoding mismatch (header is us-ascii, characters used are utf-8).  Also,
     multipart message in plaintext and HTML.
+
     """
+
     # First attachment
     attachment1_path = Path(tmpdir/"attachment1.txt")
     attachment1_path.write_text("Hello world\n", encoding="utf8")

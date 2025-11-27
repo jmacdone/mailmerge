@@ -8,7 +8,18 @@ import time
 import textwrap
 from pathlib import Path
 import csv
+from typing import Any, Generator
+
 import click
+try:
+    # try to support lax JSON (comments, trailing commas) if the library is available
+    import commentjson as json
+    from commentjson import JSONLibraryException as JSONDecodeError
+except ImportError:
+    # else we get the batteries-included version
+    import json
+    from json import JSONDecodeError
+
 from .template_message import TemplateMessage
 from .sendmail_client import SendmailClient
 from . import exceptions
@@ -47,7 +58,7 @@ from . import exceptions
 @click.option(
     "--database", "database_path",
     default="mailmerge_database.csv",
-    type=click.Path(),
+    type=click.Path(path_type=Path),
     help="database CSV (mailmerge_database.csv)",
 )
 @click.option(
@@ -94,10 +105,10 @@ def main(*, sample, dry_run, limit, no_limit, resume,
     message_num = 1 + start
     try:
         template_message = TemplateMessage(template_path)
-        csv_database = read_csv_database(database_path)
+        database_iter = read_database(database_path)
         sendmail_client = SendmailClient(config_path, dry_run)
 
-        for _, row in enumerate_range(csv_database, start, stop):
+        for _, row in enumerate_range(database_iter, start, stop):
             sender, recipients, message = template_message.render(row)
             while True:
                 try:
@@ -297,8 +308,26 @@ def detect_database_format(database_file):
 
     return csvdialect
 
+def read_json_database(database_path: Path)-> Generator[dict[str, Any], None, None]:
+    """Read a JSON array of objects
 
-def read_csv_database(database_path):
+       Example:
+       [
+          {"title": "I'm the first template", "purchases": ["eggs", "ham", "green food coloring"]},
+          {"title": "Second Template", "purchases": ["crypto", "NFTs", "commercial real estata"]}
+       ]
+    """
+    with database_path.open(encoding="utf-8-sig") as json_file:
+        try:
+            records = json.load(json_file)
+        except JSONDecodeError as err:
+            raise exceptions.MailmergeError(f"{database_path}: Unable to decode as JSON: {err}")
+        assert isinstance(records, list)
+        assert isinstance(records[0], dict)
+        yield from records
+
+
+def read_csv_database(database_path: Path) -> Generator[dict[str, Any], None, None]:
     """Read database CSV file, providing one line at a time.
 
     Use strict syntax checking, which will trigger errors for things like
@@ -334,6 +363,18 @@ def enumerate_range(iterable, start=0, stop=None):
         if stop is not None and i >= stop:
             return
         yield i, value
+
+
+def read_database(database_path: Path) -> Generator[dict[str, Any], None, None]:
+    if database_path.suffix.lower().startswith('.json'):
+        yield from read_json_database(database_path)
+    elif database_path.suffix.lower() in ['.csv','.txt']:
+        yield from read_csv_database(database_path)
+    else:
+        # I see print_bright_white_on_cyan() used for printing warnings
+        # but I don't want to keep passing around output_format
+        # logging.warning("Unable to automatically detect database format.  Defaulting to CSV")
+        yield from read_csv_database(database_path)
 
 
 def print_cyan(string, output_format):

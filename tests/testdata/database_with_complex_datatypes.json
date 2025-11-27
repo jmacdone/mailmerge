@@ -1,0 +1,31 @@
+[
+    {"name": "Phillip J Fry",
+     "orders": [ {"item": "pizza", "cost": 5.99},
+                 {"item": "coke", "cost": 3.25}],
+     "notes": "Wearing a red jacket" 
+    },
+
+    {"name": "Turanga Leela",
+     "orders": [ {"item": "slurm", "cost": 2.50},
+                 {"item": "tofu burrito", "cost": 7.15}],
+     "vip": true},
+
+    {"name": "Bender Bending Rodriguez",
+     "orders": [ {"item": "shiny metal polish", "cost": 11.00}],
+     "inventory": {"arms": 2, "legs": 2, "door": 1},
+     "bender_mode": null},
+
+    {"name": "Professor Farnsworth",
+     "orders": [],
+     "notes": "Good news everyone!",
+     "discounts": [0.1, 0.15]},
+
+    {"name": "Hermes Conrad",
+     "orders": [ {"item": "manila folder", "cost": 1.00}]
+    },
+
+    {"name": "Amy Wong",
+     "orders": [ {"item": "plush nibbler", "cost": 18.99},
+                 {"item": "jet fuel", "cost": 299.99}],
+     "address": {"city": "Mars", "compound": "Wong Ranch"}}
+]
