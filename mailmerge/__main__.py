@@ -320,7 +320,7 @@ def read_json_database(database_path: Path)-> Generator[dict[str, Any], None, No
     with database_path.open(encoding="utf-8-sig") as json_file:
         try:
             records = json.load(json_file)
-        except JSONDecodeError as err:
+        except (JSONDecodeError, ValueError) as err:
             raise exceptions.MailmergeError(f"{database_path}: Unable to decode as JSON: {err}")
         assert isinstance(records, list)
         assert isinstance(records[0], dict)
