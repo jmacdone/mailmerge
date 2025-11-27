@@ -6,7 +6,14 @@ Andrew DeOrio <awdeorio@umich.edu>
 import textwrap
 from pathlib import Path
 import pytest
-from mailmerge.__main__ import enumerate_range, read_database
+from mailmerge.__main__ import (
+    enumerate_range,
+    read_database,
+    read_jsonl_database,
+    read_json_database,
+    read_csv_database,
+    suffix_to_database_reader,
+)
 from mailmerge import MailmergeError
 
 
@@ -137,3 +144,52 @@ def test_json_database_bad_format_missing_brace(tmpdir):
     database_path.write_text("""[ {"email": "one@test.com", "purchases": ["eggs", "spam"], ]""", encoding="utf8")
     with pytest.raises(MailmergeError):
         list(read_database(database_path))
+
+
+def test_jsonl_database(tmpdir):
+    """JSONL database yields one dict per line."""
+    database_path = Path(tmpdir/"database.jsonl")
+    database_path.write_text(textwrap.dedent("""\
+        {"email": "one@test.com", "name": "One"}
+        {"email": "two@test.com", "name": "Two"}
+    """), encoding="utf8")
+    rows = list(read_jsonl_database(database_path))
+    assert rows == [
+        {"email": "one@test.com", "name": "One"},
+        {"email": "two@test.com", "name": "Two"},
+    ]
+
+
+def test_jsonl_database_bad_line(tmpdir):
+    """Invalid JSONL line raises MailmergeError."""
+    database_path = Path(tmpdir/"database.jsonl")
+    database_path.write_text(textwrap.dedent("""\
+        {"email": "good@test.com"}
+        {not valid json}
+    """), encoding="utf8")
+    with pytest.raises(MailmergeError):
+        list(read_jsonl_database(database_path))
+
+
+def test_suffix_to_database_reader_jsonl():
+    """Suffix mapping returns JSONL reader."""
+    reader = suffix_to_database_reader(Path("data.JSONL"))
+    assert reader is read_jsonl_database
+
+
+def test_suffix_to_database_reader_json():
+    """Suffix mapping returns JSON reader."""
+    reader = suffix_to_database_reader(Path("data.Json"))
+    assert reader is read_json_database
+
+
+def test_suffix_to_database_reader_csv():
+    """Suffix mapping returns CSV reader."""
+    reader = suffix_to_database_reader(Path("data.CSV"))
+    assert reader is read_csv_database
+
+
+def test_suffix_to_database_reader_default():
+    """Unknown suffix falls back to CSV reader."""
+    reader = suffix_to_database_reader(Path("data.unknown"))
+    assert reader is read_csv_database

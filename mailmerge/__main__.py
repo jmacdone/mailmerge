@@ -308,6 +308,38 @@ def detect_database_format(database_file):
 
     return csvdialect
 
+def read_jsonl_database(database_path: Path)-> Generator[dict[str, Any], None, None]:
+    """Reads JSONL files.  One JSON objects per line.
+
+    Example:
+    {"title": "I'm the first template", "purchases": ["eggs", "ham", "green food coloring"]},
+    {"title": "Second Template", "purchases": ["crypto", "NFTs", "commercial real estata"]}
+
+
+    One intended use case is with Postgres with json_build_object and JSON_AGG
+
+    SELECT
+    json_build_object(
+        'canvas_user_id', wl.user_id,
+        'course', cs.name,
+        'assignments', JSON_AGG(
+            json_build_object(
+                'assignment_title', a.title,
+                'url', wl.url,
+            ) 
+        )
+    )
+    FROM  ...      
+    """
+    with database_path.open(encoding="utf-8-sig") as jsonl_file:
+        for n,line in enumerate(jsonl_file):
+            try:
+                obj = json.loads(line)
+                assert isinstance(obj, dict)
+                yield obj
+            except (JSONDecodeError, ValueError) as err:
+                raise exceptions.MailmergeError(f"{database_path}: Unable to decode line {n} as JSON: {err}")
+
 def read_json_database(database_path: Path)-> Generator[dict[str, Any], None, None]:
     """Read a JSON array of objects
 
@@ -364,17 +396,22 @@ def enumerate_range(iterable, start=0, stop=None):
             return
         yield i, value
 
-
-def read_database(database_path: Path) -> Generator[dict[str, Any], None, None]:
-    if database_path.suffix.lower().startswith('.json'):
-        yield from read_json_database(database_path)
+def suffix_to_database_reader(database_path) -> callable:
+    if database_path.suffix.lower() in ['.jsonl','.ndjson','.jl','.jsonlines']:
+        return read_jsonl_database
+    elif database_path.suffix.lower().startswith('.json'):
+        return read_json_database
     elif database_path.suffix.lower() in ['.csv','.txt']:
-        yield from read_csv_database(database_path)
+        return read_csv_database
     else:
         # I see print_bright_white_on_cyan() used for printing warnings
         # but I don't want to keep passing around output_format
         # logging.warning("Unable to automatically detect database format.  Defaulting to CSV")
-        yield from read_csv_database(database_path)
+        return read_csv_database
+
+def read_database(database_path: Path) -> Generator[dict[str, Any], None, None]:
+    database_reader = suffix_to_database_reader(database_path)
+    yield from database_reader(database_path)
 
 
 def print_cyan(string, output_format):
