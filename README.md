@@ -419,17 +419,18 @@ Hi, {{name}},
 
 ## Other Database Formats
 
-Optionally, json and jsonl (JSON Lines) databases can be used in addition to CSV.  This allows for more complexly structured data.
+JSON and JSONL (JSON Lines) databases can be used in addition to CSV.  This allows for more complexly structured data.  The optional `commentjson` library
+allows for comments and trailing commas within the JSON
 
 ```
-pip install mailmerge[jsonl]
+pip install mailmerge[jsonc]
 ```
 
 Be sure to specify the database using the `--database` option and use `.json` or `.jsonl` (as appropriate) for the file extension.
 
 ### JSON array-of-objects example
 
-```json
+```jsonc
 // orders.jsonl
 // comments and trailing commas are acceptable with the commentjson library
 [
@@ -448,7 +449,7 @@ Be sure to specify the database using the `--database` option and use `.json` or
 
 ### JSONL - the same example, but in .jsonl format
 
-```jsonl
+```jsonc
 // orders.jsonl
 {"name": "Phillip J Fry", "orders": [ {"item": "pizza", "cost": 5.99}, {"item": "coke", "cost": 3.25}], "notes": "Wearing a red jacket" }
 {"name": "Turanga Leela", "orders": [ {"item": "slurm", "cost": 2.50}, {"item": "tofu burrito", "cost": 7.15}], "vip": true}
