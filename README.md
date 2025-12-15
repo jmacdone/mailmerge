@@ -18,6 +18,7 @@ A simple, command line mail merge tool.
 - [Markdown formatting](#markdown-formatting)
 - [Attachments](#attachments)
 - [Inline Image Attachments](#inline-image-attachments)
+- [Other database formats (json, jsonl)](#other-database-formats):
 - [Contributing](#contributing)
 - [Acknowledgements](#acknowledgements)
 
@@ -414,6 +415,62 @@ CONTENT-TYPE: text/markdown
 Hi, {{name}},
 
 ![image alt-description](image.jpg)
+```
+
+## Other Database Formats
+
+Optionally, json and jsonl (JSON Lines) databases can be used in addition to CSV.  This allows for more complexly structured data.
+
+```
+pip install mailmerge[jsonl]
+```
+
+Be sure to specify the database using the `--database` option and use `.json` or `.jsonl` (as appropriate) for the file extension.
+
+### JSON array-of-objects example
+
+```json
+// orders.jsonl
+// comments and trailing commas are acceptable with the commentjson library
+[
+    {"name": "Phillip J Fry",
+     "orders": [ {"item": "pizza", "cost": 5.99},
+                 {"item": "coke", "cost": 3.25}],
+     "notes": "Wearing a red jacket"
+    },
+
+    {"name": "Turanga Leela",
+     "orders": [ {"item": "slurm", "cost": 2.50},
+                 {"item": "tofu burrito", "cost": 7.15}],
+     "vip": true},
+]
+```
+
+### JSONL - the same example, but in .jsonl format
+
+```jsonl
+// orders.jsonl
+{"name": "Phillip J Fry", "orders": [ {"item": "pizza", "cost": 5.99}, {"item": "coke", "cost": 3.25}], "notes": "Wearing a red jacket" }
+{"name": "Turanga Leela", "orders": [ {"item": "slurm", "cost": 2.50}, {"item": "tofu burrito", "cost": 7.15}], "vip": true}
+```
+
+
+### Example template sippet
+
+```jinja-html
+Subject: Your Order
+
+<p> Hello, {{ name }}
+
+<p> Your order is on it's way &hellip;
+
+<table>
+<th><td>Menu Item</td><td>Price</td></th>
+{% for order in orders %}
+    <tr><td>order["item"]</td><td>order["cost"]</td></th>
+{% endfor %}
+</table>
+
 ```
 
 ## Contributing
